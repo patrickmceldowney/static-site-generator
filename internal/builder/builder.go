@@ -53,7 +53,7 @@ func Build() error {
 
 		// Render template with content
 		page := Page{
-			Title:	strings.TrimSuffix(filepath.Base(path), ".md"),
+			Title:   strings.TrimSuffix(filepath.Base(path), ".md"),
 			Content: template.HTML(htmlContent),
 		}
 
