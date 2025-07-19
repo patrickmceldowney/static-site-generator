@@ -8,7 +8,10 @@
     <h1>Blog</h1>
     <ul>
       {{range .}}
-      <li><a href="/{{.Path | html}}">{{.Title}}</a> — {{.Date}}</li>
+      <li>
+        <a href="/{{.Path | html}}">{{.Title}}</a>
+        — {{.Time.Format "January 2, 2006"}}
+      </li>
       {{end}}
     </ul>
   </body>

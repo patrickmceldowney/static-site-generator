@@ -66,7 +66,7 @@ func Build() error {
 
 	// sort by date descending
 	sort.SliceStable(pages, func(i, j int) bool {
-		return pages[i].Date > pages[j].Date
+		return pages[i].Time.After(pages[j].Time)
 	})
 
 	// render blog index

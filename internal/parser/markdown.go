@@ -4,8 +4,9 @@ package parser
 import (
 	"errors"
 	"html/template"
-	"strings"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -21,6 +22,7 @@ type Page struct {
 	Template string        `yaml:"template"`
 	Content  template.HTML `yaml:"-"`
 	Path     string        `yaml:"-"`
+	Time     time.Time     `yaml:"-"`
 }
 
 func ParseMarkdownWithFrontMatter(content []byte, path string) (Page, error) {
@@ -51,6 +53,11 @@ func ParseMarkdownWithFrontMatter(content []byte, path string) (Page, error) {
 	}
 
 	page.Path = filepath.ToSlash(strings.Replace(relPath, "content", "output", 1) + ".html")
+
+	t, timeErr := time.Parse("2006-01-02", page.Date)
+	if timeErr == nil {
+		page.Time = t
+	}
 
 	// markdown to HTML
 	renderer := html.NewRenderer(html.RendererOptions{Flags: html.CommonFlags})
