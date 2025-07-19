@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/html"
 	"html/template"
+
+	"github.com/patrickmceldowney/static-site-generator/internal/parser"
 )
 
 type Page struct {
 	Title   string
+	Date    string
 	Content template.HTML
 }
 
@@ -39,26 +40,25 @@ func Build() error {
 			return fmt.Errorf("read file error: %w", readErr)
 		}
 
-		opts := html.RendererOptions{Flags: html.CommonFlags}
-		renderer := html.NewRenderer(opts)
-		htmlContent := markdown.ToHTML(input, nil, renderer)
+		page, parseErr := parser.ParseMarkdownWithFrontMatter(input)
+		if parseErr != nil {
+			return fmt.Errorf("parse markdown error in %s: %w", path, parseErr)
+		}
 
-		// Create output path
-		relPath, _ := filepath.Rel("content", path)
+		// Get relative path from content/ → e.g., "blog/post.md"
+		relPath, pathErr := filepath.Rel("content", path)
+		if pathErr != nil {
+			return fmt.Errorf("path error: %w", pathErr)
+		}
+
+		// Replace .md with .html and place into /output
 		outputPath := filepath.Join("output", strings.ReplaceAll(relPath, ".md", ".html"))
 
 		if osErr := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); osErr != nil {
 			return fmt.Errorf("mkdir error: %w", osErr)
 		}
 
-		// Render template with content
-		page := Page{
-			Title:   strings.TrimSuffix(filepath.Base(path), ".md"),
-			Content: template.HTML(htmlContent),
-		}
-
 		f, createErr := os.Create(outputPath)
-
 		if createErr != nil {
 			return fmt.Errorf("create output error: %w", createErr)
 		}

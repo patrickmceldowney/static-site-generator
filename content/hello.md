@@ -1,3 +1,8 @@
-# Hello, Go!
+---
+title: Hello World
+date: 2025-07-19
+---
 
-This is a test post built with your static site generator.
+# Welcome!
+
+This is my post.
