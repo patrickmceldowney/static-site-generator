@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Blog Index</title>
+  </head>
+  <body>
+    <h1>Blog</h1>
+    <ul>
+      {{range .}}
+      <li><a href="/{{.Path | html}}">{{.Title}}</a> — {{.Date}}</li>
+      {{end}}
+    </ul>
+  </body>
+</html>

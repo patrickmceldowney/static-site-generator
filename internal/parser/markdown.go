@@ -5,19 +5,25 @@ import (
 	"errors"
 	"html/template"
 	"strings"
+	"path/filepath"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
 )
 
+// yaml:"-" means we shouldn't parse it from YAML, we will generate it by code
 type Page struct {
-	Title   string
-	Date    string
-	Content template.HTML
+	Title    string        `yaml:"title"`
+	Date     string        `yaml:"date"`
+	Tags     []string      `yaml:"tags"`
+	Slug     string        `yaml:"slug"`
+	Template string        `yaml:"template"`
+	Content  template.HTML `yaml:"-"`
+	Path     string        `yaml:"-"`
 }
 
-func ParseMarkdownWithFrontMatter(content []byte) (Page, error) {
+func ParseMarkdownWithFrontMatter(content []byte, path string) (Page, error) {
 	var page Page
 
 	contentStr := string(content)
@@ -33,14 +39,23 @@ func ParseMarkdownWithFrontMatter(content []byte) (Page, error) {
 	frontMatter := parts[1]
 	body := parts[2]
 
-	// Parse YAML into page fields
+	// parse YAML into page fields
 	if err := yaml.Unmarshal([]byte(frontMatter), &page); err != nil {
 		return page, err
 	}
 
+	// compute fallback slug/path if not provided
+	relPath := strings.TrimSuffix(path, ".md")
+	if page.Slug == "" {
+		page.Slug = filepath.Base(relPath)
+	}
+
+	page.Path = filepath.ToSlash(strings.Replace(relPath, "content", "output", 1) + ".html")
+
+	// markdown to HTML
 	renderer := html.NewRenderer(html.RendererOptions{Flags: html.CommonFlags})
 	htmlContent := markdown.ToHTML([]byte(body), nil, renderer)
-
 	page.Content = template.HTML(htmlContent)
+
 	return page, nil
 }

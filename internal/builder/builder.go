@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"html/template"
@@ -20,19 +21,16 @@ type Page struct {
 }
 
 func Build() error {
-	templatePath := "templates/base.html"
-	tmpl, err := template.ParseFiles(templatePath)
+	tmpl, err := template.ParseFiles("templates/base.html")
 	if err != nil {
 		return fmt.Errorf("template parse error: %w", err)
 	}
 
-	err = filepath.WalkDir("content", func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
+	var pages []parser.Page
 
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
+	err = filepath.WalkDir("content", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
+			return walkErr
 		}
 
 		input, readErr := os.ReadFile(path)
@@ -40,20 +38,15 @@ func Build() error {
 			return fmt.Errorf("read file error: %w", readErr)
 		}
 
-		page, parseErr := parser.ParseMarkdownWithFrontMatter(input)
+		page, parseErr := parser.ParseMarkdownWithFrontMatter(input, path)
 		if parseErr != nil {
 			return fmt.Errorf("parse markdown error in %s: %w", path, parseErr)
 		}
 
-		// Get relative path from content/ → e.g., "blog/post.md"
-		relPath, pathErr := filepath.Rel("content", path)
-		if pathErr != nil {
-			return fmt.Errorf("path error: %w", pathErr)
-		}
+		pages = append(pages, page)
 
-		// Replace .md with .html and place into /output
-		outputPath := filepath.Join("output", strings.ReplaceAll(relPath, ".md", ".html"))
-
+		// write individual pages
+		outputPath := page.Path
 		if osErr := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); osErr != nil {
 			return fmt.Errorf("mkdir error: %w", osErr)
 		}
@@ -62,11 +55,36 @@ func Build() error {
 		if createErr != nil {
 			return fmt.Errorf("create output error: %w", createErr)
 		}
-
 		defer f.Close()
 
 		return tmpl.Execute(f, page)
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	// sort by date descending
+	sort.SliceStable(pages, func(i, j int) bool {
+		return pages[i].Date > pages[j].Date
+	})
+
+	// render blog index
+	indexTemplate, parseErr := template.ParseFiles("templates/blog_index.html")
+	if parseErr != nil {
+		return fmt.Errorf("error parsing blog index template: %w", parseErr)
+	}
+
+	indexPath := "output/blog/index.html"
+	if err := os.MkdirAll(filepath.Dir(indexPath), os.ModePerm); err != nil {
+		return err
+	}
+
+	out, err := os.Create(indexPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	return indexTemplate.Execute(out, pages)
 }
