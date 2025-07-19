@@ -12,8 +12,8 @@ import (
 )
 
 type Page struct {
-	Title string
-	Date string
+	Title   string
+	Date    string
 	Content template.HTML
 }
 
