@@ -5,10 +5,10 @@ import (
 	"flag"
 	"os"
 
-	"gostatic/internal/builder"
+	"github.com/patrickmceldowney/static-site-generator/internal/builder"
 )
 
-function main() {
+func main() {
 	build := flag.Bool("build", false, "Build the static site")
 	watch := flag.Bool("watch", false, "Watch files and auto-rebuild on changes")
 	flag.Parse()
