@@ -88,6 +88,7 @@ func ParseMarkdown(path, inputDir string) (models.Page, error) {
 		Content:     body,
 		HTMLContent: template.HTML(html),
 		OutputPath:  outputPath,
+		Layout:			 layout,
 	}, nil
 
 }

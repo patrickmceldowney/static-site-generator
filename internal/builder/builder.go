@@ -62,9 +62,7 @@ func Build(inputDir, outputDir, templateDir string) error {
 		}
 		defer f.Close()
 
-		// We no longer need the switch statement. We directly execute the template
-		// whose name matches the layout specified in the markdown front matter.
-		// For example, if layout is "post", we execute the "post" template.
+		fmt.Sprintf("%s", page.Layout)
 		err = templates.ExecuteTemplate(f, page.Layout, page)
 		if err != nil {
 			return fmt.Errorf("error rendering %s (%s): %w", page.Layout, page.Slug, err)
