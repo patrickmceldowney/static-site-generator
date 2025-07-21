@@ -1,0 +1,8 @@
+{{ define "index" }} {{ template "base" . }} {{ end }} {{ define "content" }}
+<h1>All Posts</h1>
+<ul>
+  {{ range .Pages }}
+  <li><a href="/{{ .Slug }}/">{{ .Title }}</a></li>
+  {{ end }}
+</ul>
+{{ end }}

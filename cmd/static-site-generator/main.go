@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/patrickmceldowney/static-site-generator/internal/builder"
@@ -13,8 +13,12 @@ func main() {
 	watch := flag.Bool("watch", false, "Watch files and auto-rebuild on changes")
 	flag.Parse()
 
+	inputDir := "content"
+	outputDir := "output"
+	templateDir := "templates"
+
 	if *build {
-		err := builder.Build()
+		err := builder.Build(inputDir, outputDir, templateDir)
 
 		if err != nil {
 			fmt.Println("Build failed: ", err)

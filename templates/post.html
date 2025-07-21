@@ -1,0 +1,7 @@
+{{ define "post" }} {{ template "base" . }} {{ end }} {{ define "content" }}
+<article>
+  <h1>{{ .Title }}</h1>
+  <p>{{ .Date.Format "Jan 2, 2006" }}</p>
+  {{ .HTMLContent }}
+</article>
+{{ end }}

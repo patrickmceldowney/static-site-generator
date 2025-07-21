@@ -1,90 +1,98 @@
-// Coordinates reading files, parsing content, rendering templates, and writing output.
+// internal/builder/builder.go
 package builder
 
 import (
 	"fmt"
-	"io/fs"
+	"html/template"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
-	"html/template"
-
+	"github.com/patrickmceldowney/static-site-generator/internal/models"
 	"github.com/patrickmceldowney/static-site-generator/internal/parser"
 )
 
-type Page struct {
-	Title   string
-	Date    string
-	Content template.HTML
-}
-
-func Build() error {
-	tmpl, err := template.ParseFiles("templates/base.html")
+// Build coordinates reading files, parsing, rendering, and writing output.
+func Build(inputDir, outputDir, templateDir string) error {
+	// Parse all .html files in the template directory.
+	// When using template inheritance, ParseGlob makes all defined templates
+	// available to each other.
+	templates, err := template.ParseGlob(filepath.Join(templateDir, "*.html"))
 	if err != nil {
-		return fmt.Errorf("template parse error: %w", err)
+		return fmt.Errorf("failed to parse templates: %w", err)
 	}
 
-	var pages []parser.Page
-
-	err = filepath.WalkDir("content", func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return walkErr
+	var pages []models.Page
+	err = filepath.Walk(inputDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil || info.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
 		}
 
-		input, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return fmt.Errorf("read file error: %w", readErr)
+		page, parserErr := parser.ParseMarkdown(path, inputDir)
+		if parserErr != nil {
+			return parserErr
 		}
-
-		page, parseErr := parser.ParseMarkdownWithFrontMatter(input, path)
-		if parseErr != nil {
-			return fmt.Errorf("parse markdown error in %s: %w", path, parseErr)
-		}
-
 		pages = append(pages, page)
+		return nil
+	})
 
-		// write individual pages
-		outputPath := page.Path
-		if osErr := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); osErr != nil {
-			return fmt.Errorf("mkdir error: %w", osErr)
+	if err != nil {
+		return fmt.Errorf("error walking markdown files: %w", err)
+	}
+
+	// Sort by date descending.
+	sort.SliceStable(pages, func(i, j int) bool {
+		return pages[i].Date.After(pages[j].Date)
+	})
+
+	// Create output directory.
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Render individual pages.
+	for _, page := range pages {
+		outputPath := filepath.Join(outputDir, page.Slug, "index.html")
+		if err := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
+			return err
 		}
-
-		f, createErr := os.Create(outputPath)
-		if createErr != nil {
-			return fmt.Errorf("create output error: %w", createErr)
+		f, err := os.Create(outputPath)
+		if err != nil {
+			return err
 		}
 		defer f.Close()
 
-		return tmpl.Execute(f, page)
-	})
+		// We no longer need the switch statement. We directly execute the template
+		// whose name matches the layout specified in the markdown front matter.
+		// For example, if layout is "post", we execute the "post" template.
+		err = templates.ExecuteTemplate(f, page.Layout, page)
+		if err != nil {
+			return fmt.Errorf("error rendering %s (%s): %w", page.Layout, page.Slug, err)
+		}
+	}
 
+	// Render the index page.
+	indexPath := filepath.Join(outputDir, "index.html")
+	indexFile, err := os.Create(indexPath)
 	if err != nil {
 		return err
 	}
+	defer indexFile.Close()
 
-	// sort by date descending
-	sort.SliceStable(pages, func(i, j int) bool {
-		return pages[i].Time.After(pages[j].Time)
-	})
-
-	// render blog index
-	indexTemplate, parseErr := template.ParseFiles("templates/blog_index.html")
-	if parseErr != nil {
-		return fmt.Errorf("error parsing blog index template: %w", parseErr)
+	// The data for the index page.
+	indexData := struct {
+		Title string
+		Pages []models.Page
+	}{
+		Title: "Home",
+		Pages: pages,
 	}
 
-	indexPath := "output/blog/index.html"
-	if err := os.MkdirAll(filepath.Dir(indexPath), os.ModePerm); err != nil {
-		return err
-	}
-
-	out, err := os.Create(indexPath)
+	// Execute the "index" template.
+	err = templates.ExecuteTemplate(indexFile, "index", indexData)
 	if err != nil {
-		return err
+		return fmt.Errorf("error rendering index: %w", err)
 	}
-	defer out.Close()
 
-	return indexTemplate.Execute(out, pages)
+	return nil
 }

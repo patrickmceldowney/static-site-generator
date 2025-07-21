@@ -1,11 +1,32 @@
+<!-- 
+  This is the base layout. It defines the main HTML structure.
+  Other templates will "fill in" the content block.
+  Note that this template is named "base".
+-->
+{{define "base"}}
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>{{ .Title }}</title>
+    <!-- <link rel="stylesheet" href="/style.css" /> -->
   </head>
   <body>
-    <header><h1>{{ .Title }}</h1></header>
-    <main>{{ .Content }}</main>
+    <header>
+      <nav>
+        <a href="/">Home</a>
+      </nav>
+    </header>
+    <main>
+      <!--
+        This is the magic. We define a block named "content".
+        A child template can override this block.
+      -->
+      {{template "content" .}}
+    </main>
+    <footer>
+      <p>Generated with my awesome site generator.</p>
+    </footer>
   </body>
 </html>
+{{end}}
